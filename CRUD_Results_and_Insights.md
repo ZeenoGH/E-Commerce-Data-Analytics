@@ -41,12 +41,6 @@ COMPETITOR_PRICES (2,000+ records)
 
 ## 🔧 INDIVIDUAL CRUD OPERATIONS FOR SUPABASE
 
-### How to Run These in Supabase:
-1. Go to your Supabase project
-2. Click on "SQL Editor" in the left sidebar
-3. Copy and paste each SQL block below
-4. Click "Run" or press Ctrl+Enter
-5. View results in the output panel
 
 ---
 
