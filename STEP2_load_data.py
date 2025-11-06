@@ -1,14 +1,8 @@
-"""
-MIDTERM PROJECT - STEP 2: Load Data from Multiple Sources (Expanded)
-- API: Product data (base)
-- Generated: Customers, Suppliers, Orders (large scale)
-- Simulated: Competitor prices (many)
-"""
-import os    
+import os
 import requests
 import pandas as pd
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from faker import Faker
 import random
 from datetime import datetime, timedelta
@@ -22,60 +16,27 @@ engine = create_engine(DATABASE_URL)
 fake = Faker()
 
 print("=" * 70)
-print("MIDTERM PROJECT - DATA LOADING (EXPANDED VERSION)")
+print("MIDTERM PROJECT - STEP 2: DATA LOADING (TO EXISTING TABLES)")
 print("=" * 70)
-
-# -------------------------------------------------------
-# Safe full wipe before loading
-# -------------------------------------------------------
-def reset_all_tables():
-    print("\n[INIT] Dropping all related tables (clean start)...")
-    with engine.begin() as conn:
-        conn.execute(text("""
-            DROP TABLE IF EXISTS 
-                competitor_prices,
-                orders,
-                customers,
-                products,
-                suppliers
-            CASCADE;
-        """))
-    print("[OK] All old tables dropped (CASCADE applied)\n")
-
 
 # -------------------------------------------------------
 # Suppliers
 # -------------------------------------------------------
 def load_suppliers():
     print("[STEP 2.1] Loading Suppliers...")
-
     suppliers_data = [
-        {'name': 'TechSupply Co', 'country': 'USA', 'contact_email': 'contact@techsupply.com'},
-        {'name': 'Fashion Forward Ltd', 'country': 'UK', 'contact_email': 'sales@fashionforward.co.uk'},
-        {'name': 'Jewelry Imports Inc', 'country': 'India', 'contact_email': 'info@jewelryimports.in'},
-        {'name': 'Electronics Hub', 'country': 'China', 'contact_email': 'orders@electronicshub.cn'},
-        {'name': 'Global Retail Supply', 'country': 'Germany', 'contact_email': 'contact@globalretail.de'},
-        {'name': 'NordicTech AB', 'country': 'Sweden', 'contact_email': 'sales@nordictech.se'},
-        {'name': 'Pacific Traders', 'country': 'Australia', 'contact_email': 'info@pacifictraders.au'},
+        {'supplier_id': 1, 'name': 'TechSupply Co', 'country': 'USA', 'contact_email': 'contact@techsupply.com'},
+        {'supplier_id': 2, 'name': 'Fashion Forward Ltd', 'country': 'UK', 'contact_email': 'sales@fashionforward.co.uk'},
+        {'supplier_id': 3, 'name': 'Jewelry Imports Inc', 'country': 'India', 'contact_email': 'info@jewelryimports.in'},
+        {'supplier_id': 4, 'name': 'Electronics Hub', 'country': 'China', 'contact_email': 'orders@electronicshub.cn'},
+        {'supplier_id': 5, 'name': 'Global Retail Supply', 'country': 'Germany', 'contact_email': 'contact@globalretail.de'},
+        {'supplier_id': 6, 'name': 'NordicTech AB', 'country': 'Sweden', 'contact_email': 'sales@nordictech.se'},
+        {'supplier_id': 7, 'name': 'Pacific Traders', 'country': 'Australia', 'contact_email': 'info@pacifictraders.au'},
     ]
-
     df = pd.DataFrame(suppliers_data)
-    df.insert(0, 'supplier_id', range(1, len(df) + 1))
-
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS suppliers (
-                supplier_id SERIAL PRIMARY KEY,
-                name TEXT,
-                country TEXT,
-                contact_email TEXT
-            );
-        """))
-
-    df.to_sql('suppliers', engine, if_exists='replace', index=False)
-    print(f"[OK] Loaded {len(df)} suppliers")
+    df.to_sql('suppliers', engine, if_exists='append', index=False)
+    print(f"[OK] Inserted {len(df)} suppliers into existing table.")
     return df
-
 
 # -------------------------------------------------------
 # Products
@@ -90,7 +51,7 @@ def load_products_from_api():
     except Exception as e:
         print(f"[WARN] Could not fetch from API ({e}), generating fake ones instead.")
         base_df = pd.DataFrame([{'base_id': i, 'base_name': fake.word()} for i in range(20)])
-
+    
     categories = ['electronics', 'fashion', 'home', 'sports', 'beauty', 'toys']
     expanded = []
     for i in range(1, 501):
@@ -104,26 +65,10 @@ def load_products_from_api():
             'stock_quantity': random.randint(20, 1000),
             'description': fake.sentence(nb_words=12)
         })
-
     df = pd.DataFrame(expanded)
-
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS products (
-                product_id SERIAL PRIMARY KEY,
-                name TEXT,
-                category TEXT,
-                price NUMERIC(10,2),
-                supplier_id INT,
-                stock_quantity INT,
-                description TEXT
-            );
-        """))
-
-    df.to_sql('products', engine, if_exists='replace', index=False)
-    print(f"[OK] Loaded {len(df)} products")
+    df.to_sql('products', engine, if_exists='append', index=False)
+    print(f"[OK] Inserted {len(df)} products into existing table.")
     return df
-
 
 # -------------------------------------------------------
 # Customers
@@ -138,23 +83,9 @@ def load_customers():
         'country': fake.country(),
         'signup_date': fake.date_between(start_date='-3y', end_date='today')
     } for i in range(5000)]
-
     df = pd.DataFrame(customers)
-
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS customers (
-                customer_id SERIAL PRIMARY KEY,
-                name TEXT,
-                email TEXT,
-                city TEXT,
-                country TEXT,
-                signup_date DATE
-            );
-        """))
-
-    df.to_sql('customers', engine, if_exists='replace', index=False)
-    print(f"[OK] Generated {len(df)} customers with IDs")
+    df.to_sql('customers', engine, if_exists='append', index=False)
+    print(f"[OK] Inserted {len(df)} customers into existing table.")
     return df
 
 
@@ -184,23 +115,8 @@ def load_orders():
         })
 
     df = pd.DataFrame(orders)
-
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS orders (
-                order_id SERIAL PRIMARY KEY,
-                customer_id INT,
-                product_id INT,
-                quantity INT,
-                order_date TIMESTAMP,
-                channel TEXT,
-                total_amount NUMERIC(10,2),
-                status TEXT
-            );
-        """))
-
-    df.to_sql('orders', engine, if_exists='replace', index=False)
-    print(f"[OK] Generated {len(df)} orders with IDs")
+    df.to_sql('orders', engine, if_exists='append', index=False)
+    print(f"[OK] Inserted {len(df)} orders into existing table.")
     return df
 
 
@@ -212,7 +128,7 @@ def load_competitor_prices():
     competitors = ['Amazon', 'eBay', 'Walmart', 'BestBuy', 'Target', 'AliExpress', 'Newegg']
     prices = []
 
-    for price_id, product_id in enumerate(range(1, 501), start=1):
+    for product_id in range(1, 501):
         for competitor in random.sample(competitors, k=4):
             prices.append({
                 'price_id': len(prices) + 1,
@@ -223,20 +139,8 @@ def load_competitor_prices():
             })
 
     df = pd.DataFrame(prices)
-
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS competitor_prices (
-                price_id SERIAL PRIMARY KEY,
-                product_id INT,
-                competitor TEXT,
-                price NUMERIC(10,2),
-                date_scraped TIMESTAMP
-            );
-        """))
-
-    df.to_sql('competitor_prices', engine, if_exists='replace', index=False)
-    print(f"[OK] Loaded {len(df)} competitor prices")
+    df.to_sql('competitor_prices', engine, if_exists='append', index=False)
+    print(f"[OK] Inserted {len(df)} competitor prices into existing table.")
     return df
 
 
@@ -244,7 +148,8 @@ def load_competitor_prices():
 # Main
 # -------------------------------------------------------
 def main():
-    reset_all_tables()  # ✅ This prevents dependency errors
+    print("\n[INFO] Assuming database schema already exists (created via SQL script).")
+    print("[INFO] Starting data loading process...\n")
 
     load_suppliers()
     load_products_from_api()
@@ -253,15 +158,8 @@ def main():
     load_competitor_prices()
 
     print("\n" + "=" * 70)
-    print("[SUCCESS] ALL DATA LOADED (EXPANDED) — CLEAN RUN!")
+    print("[SUCCESS] ALL DATA LOADED INTO EXISTING TABLES!")
     print("=" * 70)
-    print("\nData Summary:")
-    print("  - 7 Suppliers")
-    print("  - 500 Products")
-    print("  - 5,000 Customers")
-    print("  - 50,000 Orders")
-    print("  - 2,000+ Competitor Prices")
-    print("\nNext: Run STEP 3 to create VIEWs and analytics.")
 
 
 if __name__ == "__main__":
